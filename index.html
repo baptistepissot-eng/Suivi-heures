@@ -161,6 +161,12 @@
   .month-head:first-child{padding-top:0;}
   .month-head .m{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--court);}
   .month-head .t{font-size:12px;font-weight:700;color:var(--clay);}
+  .week-head{
+    display:flex;justify-content:space-between;align-items:baseline;
+    padding:8px 10px;margin:6px 0 2px;background:#F3F6F3;border-radius:8px;
+  }
+  .week-head .m{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:none;letter-spacing:normal;}
+  .week-head .t{font-size:11px;font-weight:700;color:var(--court);}
   .legend{font-size:11px;color:rgba(244,241,232,.7);text-align:center;margin-top:6px;}
  
   .toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
@@ -311,6 +317,21 @@ function fmtDate(iso){
   return `${d}/${m}/${y}`;
 }
 
+function weekStartISO(iso){
+  // renvoie la date ISO du lundi de la semaine contenant "iso"
+  const d = new Date(iso + "T00:00:00");
+  const day = d.getDay(); // 0=dim,1=lun,...6=sam
+  const diff = (day === 0 ? -6 : 1) - day; // recule jusqu'au lundi
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0,10);
+}
+
+function addDaysISO(iso, n){
+  const d = new Date(iso + "T00:00:00");
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0,10);
+}
+
 function toast(msg){
   const t = $("toast");
   t.textContent = msg;
@@ -439,23 +460,45 @@ function renderEntries(){
     head.innerHTML = `<div class="m">${MONTH_NAMES[parseInt(m,10)-1]} ${y}</div><div class="t">${round2(monthTotal)} h</div>`;
     list.appendChild(head);
 
+    // sous-groupement par semaine (lundi → dimanche) à l'intérieur du mois
+    const weeks = [];
+    let currentWeekKey = null, currentWeek = null;
     g.items.forEach(e=>{
-      const reasonMeta = REASONS.find(r=>r.key===e.raison) || REASONS[0];
-      const row = document.createElement("div");
-      row.className = "entry";
-      row.innerHTML = `
-        <div class="dot" style="background:${reasonMeta.color}"></div>
-        <div class="body">
-          <div class="r">${e.raison}${e.km ? ` · ${e.km} km` : ""}</div>
-          <div class="d">${fmtDate(e.date)}${e.note ? " · " + escapeHtml(e.note) : ""}</div>
-        </div>
-        <div class="h">${round2(e.heures)} h</div>
-        <div class="entry-actions">
-          <button class="edit" data-id="${e.id}" aria-label="Modifier">✎</button>
-          <button class="del" data-id="${e.id}" aria-label="Supprimer">✕</button>
-        </div>
-      `;
-      list.appendChild(row);
+      const wKey = weekStartISO(e.date);
+      if(wKey !== currentWeekKey){
+        currentWeekKey = wKey;
+        currentWeek = { start: wKey, items: [] };
+        weeks.push(currentWeek);
+      }
+      currentWeek.items.push(e);
+    });
+
+    weeks.forEach(w=>{
+      const weekTotal = w.items.reduce((s,e)=>s+e.heures,0);
+      const endISO = addDaysISO(w.start, 6);
+      const wHead = document.createElement("div");
+      wHead.className = "week-head";
+      wHead.innerHTML = `<div class="m">Semaine du ${fmtDate(w.start)} au ${fmtDate(endISO)}</div><div class="t">${round2(weekTotal)} h</div>`;
+      list.appendChild(wHead);
+
+      w.items.forEach(e=>{
+        const reasonMeta = REASONS.find(r=>r.key===e.raison) || REASONS[0];
+        const row = document.createElement("div");
+        row.className = "entry";
+        row.innerHTML = `
+          <div class="dot" style="background:${reasonMeta.color}"></div>
+          <div class="body">
+            <div class="r">${e.raison}${e.km ? ` · ${e.km} km` : ""}</div>
+            <div class="d">${fmtDate(e.date)}${e.note ? " · " + escapeHtml(e.note) : ""}</div>
+          </div>
+          <div class="h">${round2(e.heures)} h</div>
+          <div class="entry-actions">
+            <button class="edit" data-id="${e.id}" aria-label="Modifier">✎</button>
+            <button class="del" data-id="${e.id}" aria-label="Supprimer">✕</button>
+          </div>
+        `;
+        list.appendChild(row);
+      });
     });
   });
 
