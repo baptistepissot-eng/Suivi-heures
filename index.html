@@ -103,6 +103,13 @@
     font-size:16px;font-family:inherit;color:var(--ink);background:#FAFBFA;
   }
   .field input:focus, .field textarea:focus{outline:none;border-color:var(--clay);}
+  .checkbox-label{
+    display:flex;align-items:center;gap:8px;margin-top:8px;
+    font-size:12.5px;font-weight:600;color:var(--muted);text-transform:none;
+    letter-spacing:normal;cursor:pointer;
+  }
+  .checkbox-label input{width:auto;padding:0;accent-color:var(--clay);}
+  #heuresPerDayLabel{text-transform:none;font-weight:600;letter-spacing:normal;color:var(--clay);}
   .stepper{display:flex;align-items:stretch;gap:8px;}
   .stepper button{
     width:46px;border:2px solid #E3E9E4;background:#FAFBFA;border-radius:10px;
@@ -112,6 +119,7 @@
   .stepper input{text-align:center;font-weight:700;}
 
   .field.hidden{display:none;}
+  span.hidden{display:none;}
 
   .submit-btn{
     width:100%;padding:15px;border:none;border-radius:10px;
@@ -220,10 +228,17 @@
     <div class="field">
       <label>Date</label>
       <input type="date" id="dateInput">
+      <label class="checkbox-label"><input type="checkbox" id="multiDayToggle"> Plusieurs jours (ex : stage lun→ven)</label>
+    </div>
+
+    <div class="field hidden" id="dateEndField">
+      <label>Jusqu'au</label>
+      <input type="date" id="dateEndInput">
+      <label class="checkbox-label"><input type="checkbox" id="weekdaysOnly" checked> Jours ouvrés uniquement (lun-ven)</label>
     </div>
 
     <div class="field">
-      <label>Heures</label>
+      <label>Heures <span id="heuresPerDayLabel" class="hidden">par jour</span></label>
       <div class="stepper">
         <button type="button" id="minusBtn">–</button>
         <input type="number" id="heuresInput" step="0.25" min="0" max="24" value="1">
@@ -324,9 +339,32 @@ function renderReasonButtons(){
   });
 }
 
+function isMultiDay(){
+  return $("multiDayToggle").checked;
+}
+
+function dateRange(startISO, endISO, weekdaysOnly){
+  const out = [];
+  let d = new Date(startISO + "T00:00:00");
+  const end = new Date(endISO + "T00:00:00");
+  while(d <= end){
+    const day = d.getDay(); // 0=dim, 6=sam
+    if(!weekdaysOnly || (day !== 0 && day !== 6)){
+      out.push(d.toISOString().slice(0,10));
+    }
+    d.setDate(d.getDate()+1);
+  }
+  return out;
+}
+
 function updateSubmitState(){
   const heures = parseFloat($("heuresInput").value);
-  $("submitBtn").disabled = !(selectedReason && heures > 0);
+  let ok = selectedReason && heures > 0;
+  if(isMultiDay()){
+    const start = $("dateInput").value, end = $("dateEndInput").value;
+    ok = ok && !!start && !!end && end >= start;
+  }
+  $("submitBtn").disabled = !ok;
 }
 
 function computeTotals(){
@@ -453,24 +491,36 @@ async function saveEntries(){
   }
 }
 
+function makeId(){
+  return Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+}
+
 async function addEntry(){
   const heures = parseFloat($("heuresInput").value);
   if(!selectedReason || !(heures > 0)) return;
-  const entry = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
-    date: $("dateInput").value || todayISO(),
-    raison: selectedReason,
-    heures: heures,
-    km: selectedReason === "Trajet professionnel" ? (parseFloat($("kmInput").value) || 0) : 0,
-    note: $("noteInput").value.trim(),
-  };
-  entries.push(entry);
-  await saveEntries();
-  renderDashboard();
-  renderEntries();
-  toast("Entrée enregistrée");
 
-  // reset form (keep date and reason selection for fast repeat entry)
+  const km = selectedReason === "Trajet professionnel" ? (parseFloat($("kmInput").value) || 0) : 0;
+  const note = $("noteInput").value.trim();
+
+  let dates;
+  if(isMultiDay()){
+    const start = $("dateInput").value, end = $("dateEndInput").value;
+    if(!start || !end || end < start) return;
+    dates = dateRange(start, end, $("weekdaysOnly").checked);
+    if(!dates.length) return;
+  }else{
+    dates = [$("dateInput").value || todayISO()];
+  }
+
+  dates.forEach(date=>{
+    entries.push({ id: makeId(), date, raison: selectedReason, heures, km, note });
+  });
+
+  await saveEntries();
+
+  toast(dates.length > 1 ? `${dates.length} entrées enregistrées` : "Entrée enregistrée");
+
+  // reset form (keep reason selection and dates for fast repeat entry)
   $("noteInput").value = "";
   $("kmInput").value = "";
   $("heuresInput").value = "1";
@@ -482,6 +532,18 @@ async function deleteEntry(id){
   await saveEntries();
   refreshAll();
   toast("Entrée supprimée");
+}
+
+function initMultiDay(){
+  $("multiDayToggle").addEventListener("change", ()=>{
+    const on = isMultiDay();
+    $("dateEndField").classList.toggle("hidden", !on);
+    $("heuresPerDayLabel").classList.toggle("hidden", !on);
+    if(on && !$("dateEndInput").value) $("dateEndInput").value = $("dateInput").value;
+    updateSubmitState();
+  });
+  $("dateEndInput").addEventListener("change", updateSubmitState);
+  $("dateInput").addEventListener("change", updateSubmitState);
 }
 
 function initStepper(){
@@ -518,6 +580,7 @@ function populateFilters(){
 }
 
 function renderStats(){
+  if(!$("statMonth")) return; // stats toolbar not present in this build
   const now = new Date();
   const ym = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`;
   const monthTotal = entries.filter(e=>e.date.startsWith(ym)).reduce((s,e)=>s+e.heures,0);
@@ -615,7 +678,7 @@ function restore(file){
 }
 
 function updateTarget(){
-  const n=Number($("targetInput").value);
+  const n=Number($("targetInput")?.value);
   if(n>0){ OBJECTIF=n; localStorage.setItem("objectif_annuel",String(n)); refreshAll(); toast("Objectif mis à jour"); }
 }
 
@@ -623,14 +686,20 @@ function init(){
   $("dateInput").value = todayISO();
   renderReasonButtons();
   initStepper();
+  initMultiDay();
   $("submitBtn").addEventListener("click", async()=>{await addEntry(); refreshAll();});
-  $("targetInput").value=OBJECTIF;
-  $("targetInput").addEventListener("change", updateTarget);
-  $("exportCsvBtn").addEventListener("click", exportCSV);
-  $("printBtn").addEventListener("click", ()=>window.print());
-  $("backupBtn").addEventListener("click", backup);
-  $("restoreInput").addEventListener("change", e=>{if(e.target.files[0]) restore(e.target.files[0]);});
-  $("clearBtn").addEventListener("click", async()=>{
+
+  // Optional toolbar elements — only wired up if present in the page,
+  // so a missing button never blocks the app from loading saved entries.
+  if($("targetInput")){
+    $("targetInput").value = OBJECTIF;
+    $("targetInput").addEventListener("change", updateTarget);
+  }
+  $("exportCsvBtn")?.addEventListener("click", exportCSV);
+  $("printBtn")?.addEventListener("click", ()=>window.print());
+  $("backupBtn")?.addEventListener("click", backup);
+  $("restoreInput")?.addEventListener("change", e=>{if(e.target.files[0]) restore(e.target.files[0]);});
+  $("clearBtn")?.addEventListener("click", async()=>{
     if(confirm("Supprimer toutes les entrées ? Cette action est irréversible.")){
       entries=[]; await saveEntries(); refreshAll(); toast("Données effacées");
     }
