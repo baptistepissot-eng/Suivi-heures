@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Heures">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="application-name" content="Suivi Heures">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1E4D3A">
+<title>Heures — Coach</title>
+<style>
+  :root{
+    --court:#1E4D3A;
+    --court-dark:#123527;
+    --clay:#C1652F;
+    --clay-light:#E8A264;
+    --line:#F4F1E8;
+    --ink:#0F2A20;
+    --muted:#6B8577;
+    --card:#FFFFFF;
+    --danger:#B4402A;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--court);
+    background-image:
+      linear-gradient(var(--court-dark) 1px, transparent 1px),
+      linear-gradient(90deg, var(--court-dark) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%;
+    color:var(--ink);
+    min-height:100vh;
+    padding:0 0 40px 0;
+  }
+  .wrap{max-width:480px;margin:0 auto;padding:20px 16px;}
+  .tabbar{
+    display:flex;gap:6px;background:rgba(255,255,255,.12);border-radius:12px;
+    padding:4px;margin-bottom:6px;
+  }
+  .tab-btn{
+    flex:1;border:none;background:transparent;color:var(--line);opacity:.75;
+    padding:10px 8px;border-radius:9px;font-size:13.5px;font-weight:700;cursor:pointer;
+  }
+  .tab-btn.active{background:var(--card);color:var(--court);opacity:1;}
+  .hidden{display:none !important;}
+
+  .header{color:var(--line);text-align:center;padding:14px 0 8px;}
+  .header .eyebrow{
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    opacity:.7;font-weight:600;
+  }
+  .page-switcher{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    margin-top:6px;cursor:pointer;
+  }
+  .page-switcher h1{margin:0;font-size:22px;font-weight:700;}
+  .page-switcher .chev{font-size:13px;opacity:.75;}
+
+  .scorecard{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:20px;
+    box-shadow:0 8px 24px rgba(0,0,0,.18);
+    margin-bottom:16px;
+  }
+  .score-row{display:flex;align-items:baseline;justify-content:space-between;gap:8px;}
+  .score-main{font-size:40px;font-weight:800;color:var(--court);line-height:1;}
+  .score-main span{font-size:16px;font-weight:600;color:var(--muted);}
+  .score-sub{text-align:right;}
+  .score-sub .n{font-size:18px;font-weight:700;color:var(--clay);}
+  .score-sub .l{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+
+  .track{
+    margin-top:14px;height:10px;border-radius:6px;background:#E7EFE9;
+    overflow:hidden;position:relative;
+  }
+  .track .fill{
+    height:100%;background:linear-gradient(90deg,var(--clay-light),var(--clay));
+    border-radius:6px;transition:width .4s ease;
+  }
+
+  .breakdown{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+  .chip{flex:1 1 auto;min-width:0;background:#F3F6F3;border-radius:10px;padding:8px 10px;}
+  .chip .n{font-size:15px;font-weight:700;color:var(--court);}
+  .chip .l{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+  .card{
+    background:var(--card);border-radius:var(--radius);padding:18px;
+    box-shadow:0 8px 24px rgba(0,0,0,.18);margin-bottom:16px;
+  }
+  .card h2{margin:0 0 14px;font-size:14px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+  .card h2 .edit-link{
+    float:right;font-size:11px;text-transform:none;letter-spacing:normal;
+    color:var(--clay);font-weight:700;cursor:pointer;
+  }
+
+  .reasons{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+  .reason-btn{
+    border:2px solid #E3E9E4;background:#FAFBFA;border-radius:10px;
+    padding:12px 8px;font-size:13px;font-weight:600;color:var(--ink);
+    cursor:pointer;text-align:center;line-height:1.25;transition:.15s;
+  }
+  .reason-btn:active{transform:scale(.97);}
+  .reason-btn.active{border-color:var(--clay);background:var(--clay);color:#fff;}
+  .reason-btn.add-new{
+    border-style:dashed;color:var(--muted);background:transparent;font-weight:700;
+  }
+
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em;}
+  .field input, .field textarea, .field select{
+    width:100%;border:2px solid #E3E9E4;border-radius:10px;padding:12px;
+    font-size:16px;font-family:inherit;color:var(--ink);background:#FAFBFA;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus{outline:none;border-color:var(--clay);}
+  .checkbox-label{
+    display:flex;align-items:center;gap:8px;margin-top:8px;
+    font-size:12.5px;font-weight:600;color:var(--muted);text-transform:none;
+    letter-spacing:normal;cursor:pointer;
+  }
+  .checkbox-label input{width:auto;padding:0;accent-color:var(--clay);}
+  #heuresPerDayLabel{text-transform:none;font-weight:600;letter-spacing:normal;color:var(--clay);}
+  .stepper{display:flex;align-items:stretch;gap:8px;}
+  .stepper button{
+    width:46px;border:2px solid #E3E9E4;background:#FAFBFA;border-radius:10px;
+    font-size:20px;font-weight:700;color:var(--court);cursor:pointer;
+  }
+  .stepper button:active{background:#EFF3F0;}
+  .stepper input{text-align:center;font-weight:700;}
+  .field.hidden{display:none;}
+  span.hidden{display:none;}
+
+  .submit-btn{
+    width:100%;padding:15px;border:none;border-radius:10px;
+    background:var(--court);color:#fff;font-size:16px;font-weight:700;
+    cursor:pointer;letter-spacing:.02em;
+  }
+  .submit-btn:active{background:var(--court-dark);}
+  .submit-btn:disabled{background:#BFC9C2;cursor:not-allowed;}
+  .secondary-btn{
+    width:100%;padding:13px;border:2px solid #E3E9E4;border-radius:10px;
+    background:#FAFBFA;color:var(--court);font-size:14px;font-weight:700;
+    cursor:pointer;margin-top:8px;
+  }
+  .secondary-btn:active{background:#EFF3F0;}
+
+  .toast{
+    position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+    background:var(--court-dark);color:#fff;padding:10px 18px;border-radius:30px;
+    font-size:13px;font-weight:600;opacity:0;transition:.25s;pointer-events:none;
+    box-shadow:0 6px 20px rgba(0,0,0,.3);z-index:500;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  .entry{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid #EEF1EE;}
+  .entry:last-child{border-bottom:none;}
+  .entry .dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
+  .entry .body{flex:1;min-width:0;}
+  .entry .r{font-size:13.5px;font-weight:600;color:var(--ink);}
+  .entry .d{font-size:11.5px;color:var(--muted);}
+  .entry .h{font-size:14px;font-weight:700;color:var(--court);white-space:nowrap;}
+  .entry-actions{display:flex;gap:2px;}
+  .entry-actions button{
+    background:none;border:none;color:#C7CFC9;font-size:16px;cursor:pointer;
+    padding:4px 6px;line-height:1;
+  }
+  .entry-actions .del:active{color:var(--danger);}
+  .entry-actions .edit:active{color:var(--clay);}
+
+  .empty{text-align:center;color:var(--muted);font-size:13px;padding:20px 0;}
+  .month-head{display:flex;justify-content:space-between;align-items:baseline;padding:14px 0 6px;}
+  .month-head:first-child{padding-top:0;}
+  .month-head .m{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--court);}
+  .month-head .t{font-size:12px;font-weight:700;color:var(--clay);}
+  .week-head{
+    display:flex;justify-content:space-between;align-items:baseline;
+    padding:8px 10px;margin:6px 0 2px;background:#F3F6F3;border-radius:8px;
+  }
+  .week-head .m{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:none;letter-spacing:normal;}
+  .week-head .t{font-size:11px;font-weight:700;color:var(--court);}
+
+  .legend{font-size:11px;color:rgba(244,241,232,.7);text-align:center;margin-top:6px;}
+
+  /* Modal */
+  .modal-overlay{
+    display:none;position:fixed;inset:0;background:rgba(15,42,32,.55);
+    z-index:600;align-items:flex-end;justify-content:center;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal{
+    background:var(--card);width:100%;max-width:480px;border-radius:18px 18px 0 0;
+    padding:20px;max-height:82vh;overflow-y:auto;
+  }
+  .modal h3{margin:0 0 14px;font-size:16px;color:var(--court);}
+  .modal-close{
+    float:right;background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;
+  }
+  .page-row{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:12px 4px;border-bottom:1px solid #EEF1EE;
+  }
+  .page-row:last-child{border-bottom:none;}
+  .page-row .name{font-weight:700;font-size:14.5px;color:var(--ink);}
+  .page-row .obj{font-size:11.5px;color:var(--muted);}
+  .page-row.active .name{color:var(--clay);}
+  .page-row button{
+    background:none;border:none;color:#C7CFC9;font-size:16px;cursor:pointer;padding:4px 8px;
+  }
+  .color-picker{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+  .color-swatch{
+    width:32px;height:32px;border-radius:50%;cursor:pointer;border:3px solid transparent;
+  }
+  .color-swatch.selected{border-color:var(--ink);}
+  .danger-link{color:var(--danger);font-size:12.5px;font-weight:700;cursor:pointer;margin-top:10px;display:inline-block;}
+  .reason-row{
+    display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid #EEF1EE;
+  }
+  .reason-row:last-child{border-bottom:none;}
+  .reason-row .dot{width:12px;height:12px;border-radius:50%;flex:0 0 auto;}
+  .reason-row .name{flex:1;font-size:14px;font-weight:600;color:var(--ink);}
+  .reason-row button{background:none;border:none;color:#C7CFC9;font-size:16px;cursor:pointer;padding:4px 8px;}
+  .reason-row button:active{color:var(--danger);}
+
+  .player-row{
+    display:flex;align-items:center;gap:10px;padding:12px 2px;border-bottom:1px solid #EEF1EE;cursor:pointer;
+  }
+  .player-row:last-child{border-bottom:none;}
+  .player-row .avatar{
+    width:38px;height:38px;border-radius:50%;background:var(--court);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;flex:0 0 auto;
+  }
+  .player-row .info{flex:1;min-width:0;}
+  .player-row .pname{font-size:14.5px;font-weight:700;color:var(--ink);}
+  .player-row .pmeta{font-size:11.5px;color:var(--muted);}
+  .player-row .chev{color:#C7CFC9;font-size:16px;}
+
+  .bilan-section{margin-bottom:14px;}
+  .bilan-section label{display:block;font-size:11.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
+  .bubble-input{display:flex;gap:8px;margin-bottom:8px;}
+  .bubble-input input{flex:1;}
+  .bubble-input button{
+    width:44px;border:none;border-radius:10px;background:var(--court);color:#fff;font-size:18px;font-weight:700;cursor:pointer;
+  }
+  .bubbles{display:flex;flex-wrap:wrap;gap:6px;}
+  .bubble{
+    background:#EFF3F0;color:var(--ink);border-radius:20px;padding:6px 10px 6px 12px;
+    font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:6px;
+  }
+  .bubble button{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0;line-height:1;}
+  .bubble button:active{color:var(--danger);}
+  .bubble.readonly{background:var(--court);color:#fff;}
+  .bubble.readonly.tactique{background:var(--clay);}
+  .bubble.readonly.physique{background:#2E6F49;}
+  .bubble.readonly.mental{background:#5B4B8A;}
+
+  .bilan-card{background:#F8FAF8;border-radius:12px;padding:14px;margin-bottom:12px;}
+  .bilan-card .date{font-size:12px;font-weight:700;color:var(--clay);margin-bottom:8px;display:flex;justify-content:space-between;}
+  .bilan-card .cat-label{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:8px 0 4px;}
+  .bilan-card .cat-label:first-of-type{margin-top:0;}
+  .bilan-card .del-bilan{background:none;border:none;color:#C7CFC9;font-size:14px;cursor:pointer;}
+  .bilan-card .del-bilan:active{color:var(--danger);}
+
+  #printView{display:none;}
+  @media print{
+    body *{visibility:hidden;}
+    #printView, #printView *{visibility:visible;}
+    #printView{display:block;position:absolute;top:0;left:0;width:100%;padding:24px;color:#000;background:#fff;}
+    #printView h1{font-size:20px;margin-bottom:2px;}
+    #printView h2{font-size:14px;margin:18px 0 8px;border-bottom:1px solid #999;padding-bottom:4px;}
+    #printView table{width:100%;border-collapse:collapse;font-size:12px;}
+    #printView th, #printView td{border:1px solid #ccc;padding:5px 8px;text-align:left;}
+    #printView .meta{font-size:11px;color:#555;margin-bottom:14px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="tabbar">
+    <button class="tab-btn active" id="tabHeures">⏱ Heures</button>
+    <button class="tab-btn" id="tabJoueurs">🎾 Joueurs</button>
+  </div>
+
+  <div id="heuresSection">
+
+  <div class="header">
+    <div class="eyebrow">Suivi annuel</div>
+    <div class="page-switcher" id="pageSwitcher">
+      <h1 id="pageTitle">Mes heures</h1>
+      <span class="chev">▾</span>
+    </div>
+  </div>
+
+  <div class="scorecard">
+    <div class="score-row">
+      <div class="score-main" id="totalHeures">0<span> / 0 h</span></div>
+      <div class="score-sub">
+        <div class="n" id="pctDone">0%</div>
+        <div class="l">réalisé</div>
+      </div>
+    </div>
+    <div class="track"><div class="fill" id="fillBar" style="width:0%"></div></div>
+    <div class="breakdown" id="breakdown"></div>
+    <div class="breakdown hidden" id="kmSummary"></div>
+  </div>
+
+  <div class="card">
+    <h2>Nouvelle entrée</h2>
+
+    <div class="field">
+      <label>Raison</label>
+      <div class="reasons" id="reasonButtons"></div>
+    </div>
+
+    <div class="field">
+      <label>Date</label>
+      <input type="date" id="dateInput">
+      <label class="checkbox-label"><input type="checkbox" id="multiDayToggle"> Plusieurs jours (ex : stage lun→ven)</label>
+    </div>
+
+    <div class="field hidden" id="dateEndField">
+      <label>Jusqu'au</label>
+      <input type="date" id="dateEndInput">
+      <label class="checkbox-label"><input type="checkbox" id="weekdaysOnly" checked> Jours ouvrés uniquement (lun-ven)</label>
+    </div>
+
+    <div class="field">
+      <label>Heures <span id="heuresPerDayLabel" class="hidden">par jour</span></label>
+      <div class="stepper">
+        <button type="button" id="minusBtn">–</button>
+        <input type="number" id="heuresInput" step="0.25" min="0" max="24" value="1">
+        <button type="button" id="plusBtn">+</button>
+      </div>
+    </div>
+
+    <div class="field hidden" id="kmField">
+      <label>Kilomètres (trajet)</label>
+      <input type="number" id="kmInput" step="1" min="0" placeholder="ex : 42">
+    </div>
+
+    <div class="field">
+      <label>Note (facultatif)</label>
+      <input type="text" id="noteInput" placeholder="ex : cours collectif U12">
+    </div>
+
+    <button class="submit-btn" id="submitBtn" disabled>Enregistrer</button>
+  </div>
+
+  <div class="card">
+    <h2>Historique <span id="entryCount"></span></h2>
+    <div id="entriesList"><div class="empty">Chargement…</div></div>
+  </div>
+
+  <div class="card">
+    <h2>Export</h2>
+    <p style="font-size:12.5px;color:var(--muted);margin:0 0 4px;">Génère un récap détaillé (objectif, détail par raison, par mois, par semaine) que tu peux enregistrer en PDF ou imprimer.</p>
+    <button class="secondary-btn" id="exportBtn">Télécharger la fiche récap</button>
+    <p style="font-size:12.5px;color:var(--muted);margin:14px 0 4px;">Ou télécharge la liste brute de toutes tes entrées, à ouvrir dans Excel.</p>
+    <button class="secondary-btn" id="exportCsvBtn">Télécharger l'historique (Excel/CSV)</button>
+  </div>
+
+  </div><!-- /heuresSection -->
+
+  <div id="joueursSection" class="hidden">
+
+    <div class="header">
+      <div class="eyebrow">Suivi individuel</div>
+      <div class="page-switcher" style="cursor:default;">
+        <h1>Mes joueurs</h1>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Effectif <span id="playerCount"></span></h2>
+      <div id="playersList"><div class="empty">Aucun joueur pour le moment</div></div>
+      <button class="secondary-btn" id="addPlayerBtn">+ Ajouter un joueur</button>
+    </div>
+
+  </div><!-- /joueursSection -->
+
+  <div class="legend">Enregistré automatiquement sur cet appareil · Application installable</div>
+</div>
+
+<!-- Sélecteur de pages -->
+<div class="modal-overlay" id="pageModal">
+  <div class="modal">
+    <button class="modal-close" id="closePageModal">✕</button>
+    <h3>Mes suivis</h3>
+    <div id="pageList"></div>
+    <button class="secondary-btn" id="newPageBtn">+ Nouveau suivi</button>
+  </div>
+</div>
+
+<!-- Créer / renommer une page -->
+<div class="modal-overlay" id="pageFormModal">
+  <div class="modal">
+    <button class="modal-close" id="closePageFormModal">✕</button>
+    <h3 id="pageFormTitle">Nouveau suivi</h3>
+    <div class="field">
+      <label>Nom</label>
+      <input type="text" id="pageFormName" placeholder="ex : Académie Meyzieu">
+    </div>
+    <div class="field">
+      <label>Objectif d'heures annuel</label>
+      <input type="number" id="pageFormObjectif" min="1" step="1" placeholder="ex : 1582">
+    </div>
+    <div class="field">
+      <label>Tarif remboursement kilométrique (€/km, facultatif)</label>
+      <input type="number" id="pageFormKmRate" min="0" step="0.01" placeholder="ex : 0.35">
+    </div>
+    <button class="submit-btn" id="pageFormSave">Enregistrer</button>
+    <div id="pageFormDeleteWrap" class="hidden">
+      <span class="danger-link" id="pageFormDelete">Supprimer ce suivi</span>
+    </div>
+  </div>
+</div>
+
+<!-- Gérer les raisons -->
+<div class="modal-overlay" id="reasonModal">
+  <div class="modal">
+    <button class="modal-close" id="closeReasonModal">✕</button>
+    <h3>Gérer les raisons</h3>
+    <div id="reasonList"></div>
+    <div class="field" style="margin-top:16px;">
+      <label>Nouvelle raison</label>
+      <input type="text" id="reasonName" placeholder="ex : Réunion club">
+    </div>
+    <div class="field">
+      <label>Couleur</label>
+      <div class="color-picker" id="colorPicker"></div>
+    </div>
+    <label class="checkbox-label"><input type="checkbox" id="reasonHasKmInput"> Cette raison implique des kilomètres (trajet)</label>
+    <button class="submit-btn" id="reasonSave" style="margin-top:14px;">Ajouter</button>
+  </div>
+</div>
+
+<!-- Modifier une entrée -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <button class="modal-close" id="closeEditModal">✕</button>
+    <h3>Modifier l'entrée</h3>
+    <input type="hidden" id="editId">
+    <div class="field"><label>Date</label><input type="date" id="editDate"></div>
+    <div class="field"><label>Raison</label><select id="editReason"></select></div>
+    <div class="field"><label>Heures</label><input type="number" id="editHeures" step="0.25" min="0"></div>
+    <div class="field"><label>Km</label><input type="number" id="editKm" step="1" min="0"></div>
+    <div class="field"><label>Note</label><input type="text" id="editNote"></div>
+    <button class="submit-btn" id="editSave">Enregistrer</button>
+  </div>
+</div>
+
+<!-- Ajouter / modifier un joueur -->
+<div class="modal-overlay" id="playerFormModal">
+  <div class="modal">
+    <button class="modal-close" id="closePlayerFormModal">✕</button>
+    <h3 id="playerFormTitle">Nouveau joueur</h3>
+    <div class="field"><label>Nom</label><input type="text" id="playerFormName" placeholder="ex : Paul Laffitte"></div>
+    <div class="field"><label>Année</label><input type="number" id="playerFormYear" placeholder="ex : 2013" min="1990" max="2030"></div>
+    <div class="field"><label>Classement</label><input type="text" id="playerFormLevel" placeholder="ex : Espoir, Compétition..."></div>
+    <button class="submit-btn" id="playerFormSave">Enregistrer</button>
+    <div id="playerFormDeleteWrap" class="hidden">
+      <span class="danger-link" id="playerFormDelete">Supprimer ce joueur</span>
+    </div>
+  </div>
+</div>
+
+<!-- Profil joueur -->
+<div class="modal-overlay" id="playerProfileModal">
+  <div class="modal">
+    <button class="modal-close" id="closePlayerProfileModal">✕</button>
+    <h3 id="profileName">Joueur</h3>
+    <p style="font-size:12.5px;color:var(--muted);margin:-8px 0 14px;" id="profileMeta"></p>
+    <button class="secondary-btn" id="editPlayerBtn" style="margin-bottom:10px;">✎ Modifier / supprimer le joueur</button>
+    <button class="submit-btn" id="newBilanBtn" style="margin-bottom:16px;">+ Nouveau bilan</button>
+    <h2 style="margin-bottom:10px;">Historique des bilans</h2>
+    <div id="bilanHistory"><div class="empty">Aucun bilan pour le moment</div></div>
+  </div>
+</div>
+
+<!-- Nouveau bilan -->
+<div class="modal-overlay" id="bilanFormModal">
+  <div class="modal">
+    <button class="modal-close" id="closeBilanFormModal">✕</button>
+    <h3>Nouveau bilan</h3>
+    <p style="font-size:12px;color:var(--muted);margin:-8px 0 14px;">Ajoute des points par catégorie, puis valide.</p>
+
+    <div class="bilan-section">
+      <label>Technique</label>
+      <div class="bubble-input"><input type="text" id="bubbleInputTechnique" placeholder="ex : revers à travailler"><button type="button" data-cat="technique">+</button></div>
+      <div class="bubbles" id="bubblesTechnique"></div>
+    </div>
+    <div class="bilan-section">
+      <label>Tactique</label>
+      <div class="bubble-input"><input type="text" id="bubbleInputTactique" placeholder="ex : trop attentiste"><button type="button" data-cat="tactique">+</button></div>
+      <div class="bubbles" id="bubblesTactique"></div>
+    </div>
+    <div class="bilan-section">
+      <label>Physique</label>
+      <div class="bubble-input"><input type="text" id="bubbleInputPhysique" placeholder="ex : bon déplacement lat."><button type="button" data-cat="physique">+</button></div>
+      <div class="bubbles" id="bubblesPhysique"></div>
+    </div>
+    <div class="bilan-section">
+      <label>Mental</label>
+      <div class="bubble-input"><input type="text" id="bubbleInputMental" placeholder="ex : gère bien la pression"><button type="button" data-cat="mental">+</button></div>
+      <div class="bubbles" id="bubblesMental"></div>
+    </div>
+
+    <button class="submit-btn" id="bilanSave">Valider le bilan</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="printView"></div>
+
+<script>
+const DEFAULT_REASONS = [
+  { key: "Journée de travail classique", label: "Journée classique", color: "#1E4D3A", hasKm: false },
+  { key: "Stage", label: "Stage", color: "#C1652F", hasKm: false },
+  { key: "Suivi joueur compétition", label: "Suivi compétition", color: "#2E6F49", hasKm: false },
+  { key: "Trajet professionnel", label: "Trajet pro", color: "#8A5A2B", hasKm: true },
+  { key: "Cours individuel", label: "Cours individuel", color: "#5B4B8A", hasKm: false },
+];
+const COLOR_CHOICES = ["#1E4D3A","#C1652F","#2E6F49","#8A5A2B","#5B4B8A","#B4402A","#2A5C8A","#8A2A5C","#5C8A2A","#666666"];
+const MONTH_NAMES = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+
+const CATS = ["technique","tactique","physique","mental"];
+const DEFAULT_PLAYERS = [
+  { name: "Alexandre WOJTOWICZ", year: 2016, level: "Avenir" },
+  { name: "Paul LAFFITTE", year: 2013, level: "Espoir" },
+  { name: "Erwann FLEURY", year: 2013, level: "Compétition" },
+  { name: "Alexis BARBIER", year: 2013, level: "Espoir" },
+  { name: "Marc KREM UBEDA", year: 2012, level: "Excellence" },
+  { name: "Paul ALBOUY MEYER", year: 2012, level: "Espoir" },
+  { name: "Kaman MOORTHY", year: 2011, level: "Espoir" },
+  { name: "Célestin FAURE", year: 2011, level: "Espoir" },
+  { name: "Inès GAIDI", year: 2010, level: "Académie" },
+  { name: "Zacharie FURLAN", year: 2010, level: "Académie" },
+  { name: "Mathéo MONTANE", year: 2009, level: "Accession" },
+  { name: "Jules DELARUE", year: 2009, level: "Accession" },
+  { name: "Cédric LAGARRIGUE", year: 2009, level: "Excellence" },
+];
+
+let players = [];
+let currentPlayerId = null;
+let draftBilan = { technique: [], tactique: [], physique: [], mental: [] };
+
+function loadPlayers(){
+  let raw;
+  try{ raw = localStorage.getItem("shu_players"); }catch(e){ raw = null; }
+  if(raw){
+    try{ players = JSON.parse(raw); }catch(e){ players = []; }
+  }
+  if(!raw){
+    players = DEFAULT_PLAYERS.map(p=>({ id: makeId(), ...p }));
+    savePlayers();
+  }
+}
+function savePlayers(){
+  try{ localStorage.setItem("shu_players", JSON.stringify(players)); }
+  catch(e){ toast("Erreur d'enregistrement"); }
+}
+function loadBilans(playerId){
+  try{
+    const raw = localStorage.getItem(`shu_bilans_${playerId}`);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function saveBilans(playerId, arr){
+  try{ localStorage.setItem(`shu_bilans_${playerId}`, JSON.stringify(arr)); }
+  catch(e){ toast("Erreur d'enregistrement"); }
+}
+
+function switchTab(tab){
+  const heures = tab === "heures";
+  $("heuresSection").classList.toggle("hidden", !heures);
+  $("joueursSection").classList.toggle("hidden", heures);
+  $("tabHeures").classList.toggle("active", heures);
+  $("tabJoueurs").classList.toggle("active", !heures);
+  if(!heures) renderPlayersList();
+}
+
+function initials(name){
+  return name.split(/\s+/).map(w=>w[0]).slice(0,2).join("").toUpperCase();
+}
+
+function renderPlayersList(){
+  const wrap = $("playersList");
+  $("playerCount").textContent = players.length ? `(${players.length})` : "";
+  if(!players.length){ wrap.innerHTML = `<div class="empty">Aucun joueur pour le moment</div>`; return; }
+  const sorted = [...players].sort((a,b)=>a.name.localeCompare(b.name));
+  wrap.innerHTML = "";
+  sorted.forEach(p=>{
+    const row = document.createElement("div");
+    row.className = "player-row";
+    row.innerHTML = `
+      <div class="avatar">${initials(p.name)}</div>
+      <div class="info">
+        <div class="pname">${escapeHtml(p.name)}</div>
+        <div class="pmeta">${p.year || "?"} · ${escapeHtml(p.level || "—")}</div>
+      </div>
+      <div class="chev">›</div>
+    `;
+    row.addEventListener("click", ()=>openPlayerProfile(p.id));
+    wrap.appendChild(row);
+  });
+}
+
+function openPlayerForm(editId){
+  const p = editId ? players.find(x=>x.id===editId) : null;
+  $("playerFormTitle").textContent = editId ? "Modifier le joueur" : "Nouveau joueur";
+  $("playerFormName").value = p ? p.name : "";
+  $("playerFormYear").value = p ? p.year : "";
+  $("playerFormLevel").value = p ? p.level : "";
+  $("playerFormSave").dataset.editId = editId || "";
+  $("playerFormDeleteWrap").classList.toggle("hidden", !editId);
+  openModal("playerFormModal");
+}
+
+function savePlayerForm(){
+  const name = $("playerFormName").value.trim();
+  if(!name){ toast("Donne un nom au joueur"); return; }
+  const year = Number($("playerFormYear").value) || null;
+  const level = $("playerFormLevel").value.trim();
+  const editId = $("playerFormSave").dataset.editId;
+  if(editId){
+    const p = players.find(x=>x.id===editId);
+    p.name = name; p.year = year; p.level = level;
+    savePlayers();
+    closeModal("playerFormModal");
+    renderPlayersList();
+    if(currentPlayerId===editId) openPlayerProfile(editId);
+    toast("Joueur modifié");
+  }else{
+    const id = makeId();
+    players.push({ id, name, year, level });
+    savePlayers();
+    closeModal("playerFormModal");
+    renderPlayersList();
+    toast("Joueur ajouté");
+  }
+}
+
+function deletePlayerForm(){
+  const editId = $("playerFormSave").dataset.editId;
+  if(!editId) return;
+  if(!confirm("Supprimer ce joueur et tous ses bilans ? Action irréversible.")) return;
+  players = players.filter(p=>p.id!==editId);
+  savePlayers();
+  localStorage.removeItem(`shu_bilans_${editId}`);
+  closeModal("playerFormModal");
+  closeModal("playerProfileModal");
+  renderPlayersList();
+  toast("Joueur supprimé");
+}
+
+function openPlayerProfile(id){
+  currentPlayerId = id;
+  const p = players.find(x=>x.id===id);
+  if(!p) return;
+  $("profileName").textContent = p.name;
+  $("profileMeta").textContent = `${p.year || "?"} · ${p.level || "—"}`;
+  renderBilanHistory();
+  openModal("playerProfileModal");
+}
+
+function renderBilanHistory(){
+  const bilans = loadBilans(currentPlayerId).sort((a,b)=> (b.date+b.id).localeCompare(a.date+a.id));
+  const wrap = $("bilanHistory");
+  if(!bilans.length){ wrap.innerHTML = `<div class="empty">Aucun bilan pour le moment</div>`; return; }
+  wrap.innerHTML = "";
+  bilans.forEach(b=>{
+    const card = document.createElement("div");
+    card.className = "bilan-card";
+    const catLabels = { technique:"Technique", tactique:"Tactique", physique:"Physique", mental:"Mental" };
+    let inner = `<div class="date">${fmtDate(b.date)}<button class="del-bilan" data-id="${b.id}">✕</button></div>`;
+    CATS.forEach(cat=>{
+      if(b[cat] && b[cat].length){
+        inner += `<div class="cat-label">${catLabels[cat]}</div><div class="bubbles">`;
+        inner += b[cat].map(t=>`<span class="bubble readonly ${cat}">${escapeHtml(t)}</span>`).join("");
+        inner += `</div>`;
+      }
+    });
+    card.innerHTML = inner;
+    wrap.appendChild(card);
+  });
+  wrap.querySelectorAll(".del-bilan").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      if(!confirm("Supprimer ce bilan ?")) return;
+      const arr = loadBilans(currentPlayerId).filter(b=>b.id!==btn.dataset.id);
+      saveBilans(currentPlayerId, arr);
+      renderBilanHistory();
+      toast("Bilan supprimé");
+    });
+  });
+}
+
+function openBilanForm(){
+  draftBilan = { technique: [], tactique: [], physique: [], mental: [] };
+  CATS.forEach(cat=>{ $(`bubbleInput${cap(cat)}`).value = ""; renderDraftBubbles(cat); });
+  openModal("bilanFormModal");
+}
+
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+
+function renderDraftBubbles(cat){
+  const wrap = $(`bubbles${cap(cat)}`);
+  wrap.innerHTML = draftBilan[cat].map((t,i)=>`
+    <span class="bubble">${escapeHtml(t)}<button data-cat="${cat}" data-i="${i}">✕</button></span>
+  `).join("");
+  wrap.querySelectorAll("button").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      draftBilan[btn.dataset.cat].splice(Number(btn.dataset.i),1);
+      renderDraftBubbles(btn.dataset.cat);
+    });
+  });
+}
+
+function addBubbleFromInput(cat){
+  const input = $(`bubbleInput${cap(cat)}`);
+  const val = input.value.trim();
+  if(!val) return;
+  draftBilan[cat].push(val);
+  input.value = "";
+  renderDraftBubbles(cat);
+}
+
+function saveBilan(){
+  const hasContent = CATS.some(cat=>draftBilan[cat].length);
+  if(!hasContent){ toast("Ajoute au moins un point avant de valider"); return; }
+  const bilan = { id: makeId(), date: todayISO(), technique:[...draftBilan.technique], tactique:[...draftBilan.tactique], physique:[...draftBilan.physique], mental:[...draftBilan.mental] };
+  const arr = loadBilans(currentPlayerId);
+  arr.push(bilan);
+  saveBilans(currentPlayerId, arr);
+  closeModal("bilanFormModal");
+  renderBilanHistory();
+  toast("Bilan enregistré");
+}
+let activePageId = null;
+let entries = [];
+let selectedReason = null;
+let selectedColor = COLOR_CHOICES[0];
+
+const $ = (id) => document.getElementById(id);
+
+function makeId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function round2(n){ return Math.round(n*100)/100; }
+function toLocalISO(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+function todayISO(){ return toLocalISO(new Date()); }
+function fmtDate(iso){ const [y,m,d]=iso.split("-"); return `${d}/${m}/${y}`; }
+function escapeHtml(s){ const div=document.createElement("div"); div.textContent=s; return div.innerHTML; }
+function weekStartISO(iso){
+  const d = new Date(iso + "T00:00:00");
+  const day = d.getDay();
+  const diff = (day === 0 ? -6 : 1) - day;
+  d.setDate(d.getDate() + diff);
+  return toLocalISO(d);
+}
+function addDaysISO(iso, n){ const d=new Date(iso+"T00:00:00"); d.setDate(d.getDate()+n); return toLocalISO(d); }
+function dateRange(startISO, endISO, weekdaysOnly){
+  const out = [];
+  let d = new Date(startISO + "T00:00:00");
+  const end = new Date(endISO + "T00:00:00");
+  while(d <= end){
+    const day = d.getDay();
+    if(!weekdaysOnly || (day !== 0 && day !== 6)) out.push(toLocalISO(d));
+    d.setDate(d.getDate()+1);
+  }
+  return out;
+}
+function toast(msg){
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"), 1800);
+}
+
+/* ---------- Persistance multi-pages ---------- */
+
+function loadPages(){
+  let raw;
+  try{ raw = localStorage.getItem("shu_pages"); }catch(e){ raw = null; }
+  if(raw){
+    try{ pages = JSON.parse(raw); }catch(e){ pages = []; }
+  }
+  if(!pages || !pages.length){
+    // migration depuis l'ancienne version mono-page, ou création par défaut
+    let legacyEntries = [];
+    let legacyObjectif = 1582;
+    try{
+      const le = localStorage.getItem("entries");
+      if(le) legacyEntries = JSON.parse(le);
+      const lo = localStorage.getItem("objectif_annuel");
+      if(lo) legacyObjectif = Number(lo) || 1582;
+    }catch(e){}
+    const id = makeId();
+    pages = [{ id, name: "Mes heures de coaching", objectif: legacyObjectif, reasons: DEFAULT_REASONS.map(r=>({...r})) }];
+    savePages();
+    localStorage.setItem(`shu_entries_${id}`, JSON.stringify(legacyEntries));
+  }
+  activePageId = localStorage.getItem("shu_active_page");
+  if(!activePageId || !pages.find(p=>p.id===activePageId)){
+    activePageId = pages[0].id;
+    localStorage.setItem("shu_active_page", activePageId);
+  }
+}
+
+function savePages(){
+  try{ localStorage.setItem("shu_pages", JSON.stringify(pages)); }catch(e){ toast("Erreur d'enregistrement"); }
+}
+
+function reasonHasKm(r){
+  if(!r) return false;
+  return r.hasKm !== undefined ? r.hasKm : (r.key === "Trajet professionnel");
+}
+
+function currentPage(){ return pages.find(p=>p.id===activePageId); }
+
+function loadEntries(){
+  try{
+    const raw = localStorage.getItem(`shu_entries_${activePageId}`);
+    entries = raw ? JSON.parse(raw) : [];
+  }catch(e){ entries = []; }
+}
+
+function saveEntries(){
+  try{ localStorage.setItem(`shu_entries_${activePageId}`, JSON.stringify(entries)); }
+  catch(e){ toast("Erreur d'enregistrement"); }
+}
+
+function switchPage(id){
+  activePageId = id;
+  localStorage.setItem("shu_active_page", id);
+  selectedReason = null;
+  loadEntries();
+  refreshAll();
+  closeModal("pageModal");
+  toast(`Suivi : ${currentPage().name}`);
+}
+
+/* ---------- Rendu ---------- */
+
+function refreshAll(){
+  $("pageTitle").textContent = currentPage().name;
+  renderReasonButtons();
+  renderDashboard();
+  renderEntries();
+}
+
+function computeTotals(){
+  const totals = {};
+  currentPage().reasons.forEach(r => totals[r.key] = 0);
+  let total = 0;
+  entries.forEach(e=>{
+    totals[e.raison] = (totals[e.raison]||0) + e.heures;
+    total += e.heures;
+  });
+  return { total, totals };
+}
+
+function renderDashboard(){
+  const objectif = currentPage().objectif;
+  const { total, totals } = computeTotals();
+  $("totalHeures").innerHTML = `${round2(total)}<span> / ${objectif} h</span>`;
+  const pct = objectif ? Math.min(100, (total/objectif)*100) : 0;
+  $("pctDone").textContent = `${pct.toFixed(1)}%`;
+  $("fillBar").style.width = `${pct}%`;
+
+  const bd = $("breakdown");
+  bd.innerHTML = "";
+  currentPage().reasons.forEach(r=>{
+    const div = document.createElement("div");
+    div.className = "chip";
+    div.innerHTML = `<div class="n">${round2(totals[r.key]||0)} h</div><div class="l">${escapeHtml(r.label)}</div>`;
+    bd.appendChild(div);
+  });
+
+  const totalKm = entries.reduce((s,e)=>s+(e.km||0),0);
+  const rate = Number(currentPage().kmRate) || 0;
+  const kmWrap = $("kmSummary");
+  if(totalKm > 0){
+    kmWrap.classList.remove("hidden");
+    kmWrap.innerHTML = `
+      <div class="chip"><div class="n">${totalKm} km</div><div class="l">Total parcouru</div></div>
+      ${rate > 0 ? `<div class="chip"><div class="n">${round2(totalKm*rate)} €</div><div class="l">Dû par l'employeur</div></div>` : ''}
+    `;
+  }else{
+    kmWrap.classList.add("hidden");
+    kmWrap.innerHTML = "";
+  }
+}
+
+function renderReasonButtons(){
+  const wrap = $("reasonButtons");
+  wrap.innerHTML = "";
+  currentPage().reasons.forEach(r=>{
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "reason-btn";
+    btn.textContent = r.label;
+    btn.dataset.key = r.key;
+    btn.addEventListener("click", ()=>{
+      selectedReason = r.key;
+      document.querySelectorAll(".reason-btn").forEach(b=>b.classList.toggle("active", b.dataset.key === r.key));
+      $("kmField").classList.toggle("hidden", !reasonHasKm(r));
+      updateSubmitState();
+    });
+    wrap.appendChild(btn);
+  });
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "reason-btn add-new";
+  addBtn.textContent = "Gérer les raisons";
+  addBtn.addEventListener("click", openReasonModal);
+  wrap.appendChild(addBtn);
+}
+
+function renderEntries(){
+  const list = $("entriesList");
+  $("entryCount").textContent = entries.length ? `(${entries.length})` : "";
+  if(!entries.length){
+    list.innerHTML = `<div class="empty">Aucune entrée pour le moment</div>`;
+    return;
+  }
+  const sorted = [...entries].sort((a,b)=> (b.date+b.id).localeCompare(a.date+a.id));
+
+  const groups = [];
+  let currentKey = null, currentGroup = null;
+  sorted.forEach(e=>{
+    const key = e.date.slice(0,7);
+    if(key !== currentKey){ currentKey = key; currentGroup = { key, items: [] }; groups.push(currentGroup); }
+    currentGroup.items.push(e);
+  });
+
+  list.innerHTML = "";
+  groups.forEach(g=>{
+    const [y,m] = g.key.split("-");
+    const monthTotal = g.items.reduce((s,e)=>s+e.heures,0);
+    const head = document.createElement("div");
+    head.className = "month-head";
+    head.innerHTML = `<div class="m">${MONTH_NAMES[parseInt(m,10)-1]} ${y}</div><div class="t">${round2(monthTotal)} h</div>`;
+    list.appendChild(head);
+
+    const weeks = [];
+    let currentWeekKey = null, currentWeek = null;
+    g.items.forEach(e=>{
+      const wKey = weekStartISO(e.date);
+      if(wKey !== currentWeekKey){ currentWeekKey = wKey; currentWeek = { start: wKey, items: [] }; weeks.push(currentWeek); }
+      currentWeek.items.push(e);
+    });
+
+    weeks.forEach(w=>{
+      const weekTotal = w.items.reduce((s,e)=>s+e.heures,0);
+      const endISO = addDaysISO(w.start, 6);
+      const wHead = document.createElement("div");
+      wHead.className = "week-head";
+      wHead.innerHTML = `<div class="m">Semaine du ${fmtDate(w.start)} au ${fmtDate(endISO)}</div><div class="t">${round2(weekTotal)} h</div>`;
+      list.appendChild(wHead);
+
+      w.items.forEach(e=>{
+        const reasonMeta = currentPage().reasons.find(r=>r.key===e.raison) || {label:e.raison, color:"#999"};
+        const row = document.createElement("div");
+        row.className = "entry";
+        row.innerHTML = `
+          <div class="dot" style="background:${reasonMeta.color}"></div>
+          <div class="body">
+            <div class="r">${escapeHtml(reasonMeta.label)}${e.km ? ` · ${e.km} km` : ""}</div>
+            <div class="d">${fmtDate(e.date)}${e.note ? " · " + escapeHtml(e.note) : ""}</div>
+          </div>
+          <div class="h">${round2(e.heures)} h</div>
+          <div class="entry-actions">
+            <button class="edit" data-id="${e.id}" aria-label="Modifier">✎</button>
+            <button class="del" data-id="${e.id}" aria-label="Supprimer">✕</button>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+    });
+  });
+
+  list.querySelectorAll(".del").forEach(btn=> btn.addEventListener("click", ()=> deleteEntry(btn.dataset.id)));
+  list.querySelectorAll(".edit").forEach(btn=> btn.addEventListener("click", ()=> openEditEntry(btn.dataset.id)));
+}
+
+/* ---------- Formulaire d'ajout ---------- */
+
+function isMultiDay(){ return $("multiDayToggle").checked; }
+
+function updateSubmitState(){
+  const heures = parseFloat($("heuresInput").value);
+  let ok = selectedReason && heures > 0;
+  if(isMultiDay()){
+    const start = $("dateInput").value, end = $("dateEndInput").value;
+    ok = ok && !!start && !!end && end >= start;
+  }
+  $("submitBtn").disabled = !ok;
+}
+
+function addEntry(){
+  const heures = parseFloat($("heuresInput").value);
+  if(!selectedReason || !(heures > 0)) return;
+  const reasonMeta = currentPage().reasons.find(r=>r.key===selectedReason);
+  const km = reasonHasKm(reasonMeta) ? (parseFloat($("kmInput").value) || 0) : 0;
+  const note = $("noteInput").value.trim();
+
+  let dates;
+  if(isMultiDay()){
+    const start = $("dateInput").value, end = $("dateEndInput").value;
+    if(!start || !end || end < start) return;
+    dates = dateRange(start, end, $("weekdaysOnly").checked);
+    if(!dates.length) return;
+  }else{
+    dates = [$("dateInput").value || todayISO()];
+  }
+
+  dates.forEach(date=> entries.push({ id: makeId(), date, raison: selectedReason, heures, km, note }));
+  saveEntries();
+  toast(dates.length > 1 ? `${dates.length} entrées enregistrées` : "Entrée enregistrée");
+
+  $("noteInput").value = "";
+  $("kmInput").value = "";
+  $("heuresInput").value = "1";
+  updateSubmitState();
+  refreshAll();
+}
+
+function deleteEntry(id){
+  entries = entries.filter(e=>e.id !== id);
+  saveEntries();
+  refreshAll();
+  toast("Entrée supprimée");
+}
+
+function openEditEntry(id){
+  const e = entries.find(x=>x.id===id);
+  if(!e) return;
+  $("editId").value = e.id;
+  $("editDate").value = e.date;
+  const sel = $("editReason");
+  sel.innerHTML = currentPage().reasons.map(r=>`<option value="${escapeHtml(r.key)}">${escapeHtml(r.label)}</option>`).join("");
+  sel.value = e.raison;
+  $("editHeures").value = e.heures;
+  $("editKm").value = e.km || 0;
+  $("editNote").value = e.note || "";
+  openModal("editModal");
+}
+
+function saveEditedEntry(){
+  const id = $("editId").value;
+  const e = entries.find(x=>x.id===id);
+  if(!e) return;
+  e.date = $("editDate").value;
+  e.raison = $("editReason").value;
+  e.heures = parseFloat($("editHeures").value) || 0;
+  e.km = parseFloat($("editKm").value) || 0;
+  e.note = $("editNote").value.trim();
+  saveEntries();
+  closeModal("editModal");
+  refreshAll();
+  toast("Entrée modifiée");
+}
+
+/* ---------- Modales ---------- */
+
+function openModal(id){ $(id).classList.add("show"); }
+function closeModal(id){ $(id).classList.remove("show"); }
+
+function renderPageList(){
+  const wrap = $("pageList");
+  wrap.innerHTML = "";
+  pages.forEach(p=>{
+    const row = document.createElement("div");
+    row.className = "page-row" + (p.id===activePageId ? " active" : "");
+    row.innerHTML = `
+      <div>
+        <div class="name">${escapeHtml(p.name)}</div>
+        <div class="obj">Objectif : ${p.objectif} h</div>
+      </div>
+      <button class="rename" aria-label="Modifier">✎</button>
+    `;
+    row.querySelector(".name").addEventListener("click", ()=> switchPage(p.id));
+    row.querySelector(".obj").addEventListener("click", ()=> switchPage(p.id));
+    row.querySelector(".rename").addEventListener("click", (ev)=>{ ev.stopPropagation(); openPageForm(p.id); });
+    wrap.appendChild(row);
+  });
+}
+
+function openPageForm(editId){
+  $("pageFormTitle").textContent = editId ? "Modifier le suivi" : "Nouveau suivi";
+  const p = editId ? pages.find(x=>x.id===editId) : null;
+  $("pageFormName").value = p ? p.name : "";
+  $("pageFormObjectif").value = p ? p.objectif : 1582;
+  $("pageFormKmRate").value = p && p.kmRate ? p.kmRate : "";
+  $("pageFormSave").dataset.editId = editId || "";
+  $("pageFormDeleteWrap").classList.toggle("hidden", !editId || pages.length <= 1);
+  openModal("pageFormModal");
+}
+
+function savePageForm(){
+  const name = $("pageFormName").value.trim();
+  const objectif = Number($("pageFormObjectif").value) || 0;
+  const kmRate = Number($("pageFormKmRate").value) || 0;
+  if(!name || !objectif){ toast("Renseigne un nom et un objectif"); return; }
+  const editId = $("pageFormSave").dataset.editId;
+  if(editId){
+    const p = pages.find(x=>x.id===editId);
+    p.name = name; p.objectif = objectif; p.kmRate = kmRate;
+    savePages();
+    if(editId === activePageId) refreshAll();
+    toast("Suivi modifié");
+  }else{
+    const id = makeId();
+    pages.push({ id, name, objectif, kmRate, reasons: DEFAULT_REASONS.map(r=>({...r})) });
+    savePages();
+    localStorage.setItem(`shu_entries_${id}`, JSON.stringify([]));
+    switchPage(id);
+    toast("Nouveau suivi créé");
+  }
+  closeModal("pageFormModal");
+  renderPageList();
+}
+
+function deleteCurrentPageForm(){
+  const editId = $("pageFormSave").dataset.editId;
+  if(!editId || pages.length <= 1) return;
+  if(!confirm("Supprimer ce suivi et toutes ses entrées ? Action irréversible.")) return;
+  pages = pages.filter(p=>p.id !== editId);
+  savePages();
+  localStorage.removeItem(`shu_entries_${editId}`);
+  if(editId === activePageId) switchPage(pages[0].id);
+  closeModal("pageFormModal");
+  renderPageList();
+  toast("Suivi supprimé");
+}
+
+function renderColorPicker(){
+  const wrap = $("colorPicker");
+  wrap.innerHTML = "";
+  COLOR_CHOICES.forEach(c=>{
+    const sw = document.createElement("div");
+    sw.className = "color-swatch" + (c===selectedColor ? " selected" : "");
+    sw.style.background = c;
+    sw.addEventListener("click", ()=>{
+      selectedColor = c;
+      wrap.querySelectorAll(".color-swatch").forEach(s=>s.classList.remove("selected"));
+      sw.classList.add("selected");
+    });
+    wrap.appendChild(sw);
+  });
+}
+
+function renderReasonList(){
+  const wrap = $("reasonList");
+  wrap.innerHTML = "";
+  const page = currentPage();
+  page.reasons.forEach(r=>{
+    const row = document.createElement("div");
+    row.className = "reason-row";
+    row.innerHTML = `
+      <div class="dot" style="background:${r.color}"></div>
+      <div class="name">${escapeHtml(r.label)}${reasonHasKm(r) ? ' <span style="color:var(--clay);font-size:11px;font-weight:700;">· km</span>' : ''}</div>
+      <button data-key="${escapeHtml(r.key)}" aria-label="Supprimer">✕</button>
+    `;
+    row.querySelector("button").addEventListener("click", ()=>deleteReason(r.key));
+    wrap.appendChild(row);
+  });
+}
+
+function deleteReason(key){
+  const page = currentPage();
+  if(page.reasons.length <= 1){ toast("Il faut garder au moins une raison"); return; }
+  const usedCount = entries.filter(e=>e.raison===key).length;
+  const msg = usedCount
+    ? `Supprimer cette raison ? ${usedCount} entrée(s) existante(s) resteront mais ne seront plus modifiables par ce nom.`
+    : "Supprimer cette raison ?";
+  if(!confirm(msg)) return;
+  page.reasons = page.reasons.filter(r=>r.key!==key);
+  savePages();
+  renderReasonList();
+  renderReasonButtons();
+  renderDashboard();
+  toast("Raison supprimée");
+}
+
+function openReasonModal(){
+  $("reasonName").value = "";
+  $("reasonHasKmInput").checked = false;
+  selectedColor = COLOR_CHOICES[Math.floor(Math.random()*COLOR_CHOICES.length)];
+  renderColorPicker();
+  renderReasonList();
+  openModal("reasonModal");
+}
+
+function saveNewReason(){
+  const label = $("reasonName").value.trim();
+  if(!label) { toast("Donne un nom à cette raison"); return; }
+  const key = label; // clé = libellé (doit rester unique dans cette page)
+  const page = currentPage();
+  if(page.reasons.some(r=>r.key===key)){ toast("Cette raison existe déjà"); return; }
+  page.reasons.push({ key, label, color: selectedColor, hasKm: $("reasonHasKmInput").checked });
+  savePages();
+  $("reasonName").value = "";
+  $("reasonHasKmInput").checked = false;
+  renderReasonList();
+  renderReasonButtons();
+  toast("Raison ajoutée");
+}
+
+/* ---------- Fiche récap / impression ---------- */
+
+function buildPrintView(){
+  const page = currentPage();
+  const { total, totals } = computeTotals();
+  const objectif = page.objectif;
+
+  const byMonth = {};
+  entries.forEach(e=>{ const k=e.date.slice(0,7); byMonth[k]=(byMonth[k]||0)+e.heures; });
+  const monthRows = Object.entries(byMonth).sort((a,b)=>a[0].localeCompare(b[0]))
+    .map(([k,v])=>{ const [y,m]=k.split("-"); return `<tr><td>${MONTH_NAMES[+m-1]} ${y}</td><td>${round2(v)} h</td></tr>`; }).join("");
+
+  const byWeek = {};
+  entries.forEach(e=>{ const k=weekStartISO(e.date); byWeek[k]=(byWeek[k]||0)+e.heures; });
+  const weekRows = Object.entries(byWeek).sort((a,b)=>a[0].localeCompare(b[0]))
+    .map(([k,v])=>`<tr><td>Semaine du ${fmtDate(k)} au ${fmtDate(addDaysISO(k,6))}</td><td>${round2(v)} h</td></tr>`).join("");
+
+  const reasonRows = page.reasons.map(r=>`<tr><td>${escapeHtml(r.label)}</td><td>${round2(totals[r.key]||0)} h</td></tr>`).join("");
+
+  const totalKm = entries.reduce((s,e)=>s+(e.km||0),0);
+  const rate = Number(page.kmRate) || 0;
+
+  $("printView").innerHTML = `
+    <h1>${escapeHtml(page.name)}</h1>
+    <div class="meta">Fiche générée le ${fmtDate(todayISO())} · ${entries.length} entrée(s)</div>
+    <h2>Résumé</h2>
+    <table>
+      <tr><td>Objectif annuel</td><td>${objectif} h</td></tr>
+      <tr><td>Heures réalisées</td><td>${round2(total)} h</td></tr>
+      <tr><td>Heures restantes</td><td>${round2(Math.max(0,objectif-total))} h</td></tr>
+      <tr><td>Progression</td><td>${objectif ? ((total/objectif)*100).toFixed(1) : 0}%</td></tr>
+      <tr><td>Total kilomètres enregistrés</td><td>${totalKm} km</td></tr>
+      ${rate > 0 ? `<tr><td>Tarif remboursement km</td><td>${rate} €/km</td></tr><tr><td>Montant dû par l'employeur</td><td>${round2(totalKm*rate)} €</td></tr>` : ''}
+    </table>
+    <h2>Détail par raison</h2>
+    <table><tr><th>Raison</th><th>Heures</th></tr>${reasonRows}</table>
+    <h2>Détail par mois</h2>
+    <table><tr><th>Mois</th><th>Heures</th></tr>${monthRows}</table>
+    <h2>Détail par semaine</h2>
+    <table><tr><th>Semaine</th><th>Heures</th></tr>${weekRows}</table>
+  `;
+}
+
+function exportRecap(){
+  buildPrintView();
+  window.print();
+}
+
+function csvEscape(v){
+  const s = String(v ?? "");
+  return /[;"\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+}
+
+function exportCSV(){
+  const page = currentPage();
+  const sorted = [...entries].sort((a,b)=> a.date.localeCompare(b.date));
+  const header = ["Date","Raison","Heures","Km","Note"];
+  const rows = sorted.map(e=>{
+    const reasonMeta = page.reasons.find(r=>r.key===e.raison);
+    const label = reasonMeta ? reasonMeta.label : e.raison;
+    return [fmtDate(e.date), label, String(e.heures).replace(".",","), e.km||0, e.note||""];
+  });
+  const lines = [header, ...rows].map(r=>r.map(csvEscape).join(";"));
+  // BOM pour un accent correct à l'ouverture dans Excel
+  const csv = "\uFEFF" + lines.join("\r\n");
+  const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const safeName = page.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
+  a.href = url;
+  a.download = `historique-${safeName || "suivi"}-${todayISO()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast("Téléchargement lancé");
+}
+
+/* ---------- Init ---------- */
+
+function initMultiDay(){
+  $("multiDayToggle").addEventListener("change", ()=>{
+    const on = isMultiDay();
+    $("dateEndField").classList.toggle("hidden", !on);
+    $("heuresPerDayLabel").classList.toggle("hidden", !on);
+    if(on && !$("dateEndInput").value) $("dateEndInput").value = $("dateInput").value;
+    updateSubmitState();
+  });
+  $("dateEndInput").addEventListener("change", updateSubmitState);
+  $("dateInput").addEventListener("change", updateSubmitState);
+}
+
+function initStepper(){
+  $("minusBtn").addEventListener("click", ()=>{
+    const el = $("heuresInput");
+    el.value = Math.max(0, (parseFloat(el.value)||0) - 0.5);
+    updateSubmitState();
+  });
+  $("plusBtn").addEventListener("click", ()=>{
+    const el = $("heuresInput");
+    el.value = (parseFloat(el.value)||0) + 0.5;
+    updateSubmitState();
+  });
+  $("heuresInput").addEventListener("input", updateSubmitState);
+}
+
+function init(){
+  loadPages();
+  loadEntries();
+  loadPlayers();
+
+  $("dateInput").value = todayISO();
+  initStepper();
+  initMultiDay();
+  $("submitBtn").addEventListener("click", addEntry);
+
+  $("tabHeures").addEventListener("click", ()=>switchTab("heures"));
+  $("tabJoueurs").addEventListener("click", ()=>switchTab("joueurs"));
+
+  $("pageSwitcher").addEventListener("click", ()=>{ renderPageList(); openModal("pageModal"); });
+  $("closePageModal").addEventListener("click", ()=>closeModal("pageModal"));
+  $("newPageBtn").addEventListener("click", ()=>openPageForm(null));
+  $("closePageFormModal").addEventListener("click", ()=>closeModal("pageFormModal"));
+  $("pageFormSave").addEventListener("click", savePageForm);
+  $("pageFormDelete").addEventListener("click", deleteCurrentPageForm);
+
+  $("closeReasonModal").addEventListener("click", ()=>closeModal("reasonModal"));
+  $("reasonSave").addEventListener("click", saveNewReason);
+
+  $("closeEditModal").addEventListener("click", ()=>closeModal("editModal"));
+  $("editSave").addEventListener("click", saveEditedEntry);
+
+  $("exportBtn").addEventListener("click", exportRecap);
+  $("exportCsvBtn").addEventListener("click", exportCSV);
+
+  $("addPlayerBtn").addEventListener("click", ()=>openPlayerForm(null));
+  $("closePlayerFormModal").addEventListener("click", ()=>closeModal("playerFormModal"));
+  $("playerFormSave").addEventListener("click", savePlayerForm);
+  $("playerFormDelete").addEventListener("click", deletePlayerForm);
+  $("closePlayerProfileModal").addEventListener("click", ()=>closeModal("playerProfileModal"));
+  $("editPlayerBtn").addEventListener("click", ()=>openPlayerForm(currentPlayerId));
+  $("newBilanBtn").addEventListener("click", openBilanForm);
+  $("closeBilanFormModal").addEventListener("click", ()=>closeModal("bilanFormModal"));
+  $("bilanSave").addEventListener("click", saveBilan);
+  CATS.forEach(cat=>{
+    $(`bubbleInput${cap(cat)}`).addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); addBubbleFromInput(cat); } });
+    document.querySelector(`.bubble-input button[data-cat="${cat}"]`).addEventListener("click", ()=>addBubbleFromInput(cat));
+  });
+
+  document.querySelectorAll(".modal-overlay").forEach(ov=>{
+    ov.addEventListener("click", e=>{ if(e.target===ov) ov.classList.remove("show"); });
+  });
+
+  refreshAll();
+
+  if("serviceWorker" in navigator){
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  }
+}
+
+init();
+</script>
+</body>
+</html>
